@@ -18,7 +18,6 @@ import type {NodeKey, Store, TreeState} from '../core/Recoil_State';
 import type {PersistenceType} from '../recoil_values/Recoil_atom';
 
 const {useCallback, useEffect, useMemo, useRef, useState} = require('React');
-const ReactDOM = require('ReactDOM');
 
 const {DEFAULT_VALUE, getNode, nodes} = require('../core/Recoil_Node');
 const {useStoreRef} = require('../core/Recoil_RecoilRoot.react');
@@ -39,6 +38,7 @@ const invariant = require('../util/Recoil_invariant');
 const mapMap = require('../util/Recoil_mapMap');
 const mergeMaps = require('../util/Recoil_mergeMaps');
 const recoverableViolation = require('../util/Recoil_recoverableViolation');
+const {batchUpdates} = require('../util/Recoil_batch');
 const Tracing = require('../util/Recoil_Tracing');
 
 function handleLoadable<T>(loadable: Loadable<T>, atom, storeRef): T {
@@ -542,7 +542,7 @@ function useGotoRecoilSnapshot(): Snapshot => void {
   const storeRef = useStoreRef();
   return useCallback(
     (snapshot: Snapshot) => {
-      ReactDOM.unstable_batchedUpdates(() => {
+      batchUpdates(() => {
         storeRef.current.replaceState(prevState => {
           const nextState = snapshot.getStore_INTERNAL().getState().currentTree;
 
@@ -578,7 +578,7 @@ function useSetUnvalidatedAtomValues(): (
 ) => void {
   const storeRef = useStoreRef();
   return (values: Map<NodeKey, mixed>, transactionMetadata: {...} = {}) => {
-    ReactDOM.unstable_batchedUpdates(() => {
+    batchUpdates(() => {
       storeRef.current.addTransactionMetadata(transactionMetadata);
       values.forEach((value, key) =>
         setUnvalidatedRecoilValue(
@@ -625,13 +625,13 @@ function useRecoilCallback<Args: $ReadOnlyArray<mixed>, Return>(
       }
 
       let ret = SENTINEL;
-      ReactDOM.unstable_batchedUpdates(() => {
+      batchUpdates(() => {
         // flowlint-next-line unclear-type:off
         ret = (fn: any)({set, reset, snapshot, gotoSnapshot})(...args);
       });
       invariant(
         !(ret instanceof Sentinel),
-        'unstable_batchedUpdates should return immediately',
+        'batchUpdates should return immediately',
       );
       return (ret: Return);
     },
